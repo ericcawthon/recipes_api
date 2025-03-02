@@ -7,14 +7,23 @@ from dbconfig import config
 connection = mysql.connector.connect(**config)
 cursor = connection.cursor(dictionary=True)
 
-def get_notes(recipe_id):
+def lookup_tags(recipe_id):
+    select_query = """SELECT t.id, t.tag_name FROM recipes_tags rt
+                    LEFT JOIN tags t ON rt.tag_id = t.id 
+                    WHERE rt.recipe_id = """ + str(recipe_id) + """ ORDER BY t.tag_name"""
+    cursor.execute(select_query)
+    results = cursor.fetchall()
+
+    return results
+
+def lookup_notes(recipe_id):
     select_query = """SELECT note, sort_order FROM recipes_notes WHERE recipe_id = """ + str(recipe_id) + """ ORDER BY sort_order"""
     cursor.execute(select_query)
     results = cursor.fetchall()
 
     return results
 
-def get_ingredients(recipe_id):
+def lookup_ingredients(recipe_id):
     select_query = """SELECT ri.sort_order, i.ingredient_name, ri.quantity, uom.uom_name, uom.uom_abbr
                     FROM recipes_ingredients ri 
                     LEFT JOIN ingredients i ON ri.ingredient_id = i.id
@@ -25,7 +34,7 @@ def get_ingredients(recipe_id):
 
     return results
 
-def get_directions(recipe_id):
+def lookup_directions(recipe_id):
     select_query = """SELECT step, direction
                     FROM recipes_steps  
                     WHERE recipe_id = """ + str(recipe_id) + """ ORDER BY step"""
@@ -63,9 +72,10 @@ async def get_recipe(recipe_id: int):
     cursor.execute(select_query)
     results = cursor.fetchall()
     rec = results[0]
-    rec['ingredients'] = get_ingredients(rec['id'])
-    rec['directions'] = get_directions(rec['id'])
-    rec['notes'] = get_notes(rec['id'])
+    rec['tags'] = lookup_tags(rec['id'])
+    rec['ingredients'] = lookup_ingredients(rec['id'])
+    rec['directions'] = lookup_directions(rec['id'])
+    rec['notes'] = lookup_notes(rec['id'])
     rec['reqr_links'] = []
     rec['recd_links'] = []
     return rec
